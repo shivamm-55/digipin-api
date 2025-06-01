@@ -1,145 +1,133 @@
-export function getDIGIPINFromLatLon(lat, lon) {
-  const L1 = [
-    ['0', '2', '0', '0'],
-    ['3', '4', '5', '6'],
-    ['G', '8', '7', 'M'],
-    ['J', '9', 'K', 'L']
-  ];
+/**
+ * Converts coordinates to DIGIPIN codes and vice versa
+ */
 
-  const L2 = [
-    ['J', 'G', '9', '8'],
-    ['K', '3', '2', '7'],
-    ['L', '4', '5', '6'],
-    ['M', 'P', 'W', 'X']
-  ];
+// Single grid for all encoding/decoding
+const DIGIPIN_GRID = [
+  ['F', 'C', '9', '8'],
+  ['J', '3', '2', '7'],
+  ['K', '4', '5', '6'],
+  ['L', 'M', 'P', 'T']
+];
 
-  let vDIGIPIN = '';
-  let MinLat = 1.50; let MaxLat = 39.00; let MinLon = 63.50; let MaxLon = 99.00;
-  let LatDivBy = 4; let LonDivBy = 4;
+// Updated boundary values
+const BOUNDS = {
+  minLat: 2.5,
+  maxLat: 38.5,
+  minLon: 63.5,
+  maxLon: 99.5
+};
 
-  let row = 0; let column = 0;
-  let LatDivDeg = 0; let LonDivDeg = 0;
-
-  if (lat < MinLat || lat > MaxLat || lon < MinLon || lon > MaxLon) {
+/**
+ * Converts latitude and longitude to a DIGIPIN code
+ * @param {number} lat - Latitude
+ * @param {number} lon - Longitude
+ * @returns {string} DIGIPIN code
+ */
+export function getDIGIPINFromLatLon(lat: number, lon: number): string {
+  if (lat < BOUNDS.minLat || lat > BOUNDS.maxLat) {
+    return 'Out of Bound';
+  }
+  if (lon < BOUNDS.minLon || lon > BOUNDS.maxLon) {
     return 'Out of Bound';
   }
 
-  for (let Lvl = 1; Lvl <= 10; Lvl++) {
-    LatDivDeg = (MaxLat - MinLat) / LatDivBy;
-    LonDivDeg = (MaxLon - MinLon) / LonDivBy;
+  let minLat = BOUNDS.minLat;
+  let maxLat = BOUNDS.maxLat;
+  let minLon = BOUNDS.minLon;
+  let maxLon = BOUNDS.maxLon;
 
-    let NextLvlMaxLat = MaxLat;
-    let NextLvlMinLat = MaxLat - LatDivDeg;
+  let digiPin = '';
 
-    for (let x = 0; x < LatDivBy; x++) {
-      if (lat >= NextLvlMinLat && lat < NextLvlMaxLat) {
-        row = x;
-        break;
-      }
-      else {
-        NextLvlMaxLat = NextLvlMinLat
-        NextLvlMinLat = NextLvlMaxLat - LatDivDeg;
-      }
+  for (let level = 1; level <= 10; level++) {
+    const latDiv = (maxLat - minLat) / 4;
+    const lonDiv = (maxLon - minLon) / 4;
+
+    // Using reversed row logic as in updated algorithm
+    let row = 3 - Math.floor((lat - minLat) / latDiv);
+    let col = Math.floor((lon - minLon) / lonDiv);
+
+    // Ensure values are within bounds
+    row = Math.max(0, Math.min(row, 3));
+    col = Math.max(0, Math.min(col, 3));
+
+    digiPin += DIGIPIN_GRID[row][col];
+
+    // Add hyphens after 3rd and 6th characters
+    if (level === 3 || level === 6) {
+      digiPin += '-';
     }
 
-    let NextLvlMinLon = MinLon;
-    let NextLvlMaxLon = MinLon + LonDivDeg;
+    // Update bounds for next level
+    maxLat = minLat + latDiv * (4 - row);
+    minLat = minLat + latDiv * (3 - row);
 
-    for (let x = 0; x < LonDivBy; x++) {
-      if (lon >= NextLvlMinLon && lon < NextLvlMaxLon) {
-        column = x;
-        break;
-      }
-      else {
-        NextLvlMinLon = NextLvlMaxLon;
-        NextLvlMaxLon = NextLvlMinLon + LonDivDeg;
-      }
-    }
-    if (Lvl === 1) {
-      if (L1[row][column] === "0") {
-        return "Out of Bound";
-      }
-      vDIGIPIN += L1[row][column];
-    } else {
-      vDIGIPIN += L2[row][column];
-      if (Lvl === 3 || Lvl === 6) {
-        vDIGIPIN += "-";
-      }
-    }
-
-    MinLat = NextLvlMinLat; MaxLat = NextLvlMaxLat;
-    MinLon = NextLvlMinLon; MaxLon = NextLvlMaxLon;
+    minLon = minLon + lonDiv * col;
+    maxLon = minLon + lonDiv;
   }
-  return vDIGIPIN;
+
+  return digiPin;
 }
 
-export function getLatLonFromDIGIPIN(digipin) {
-  const L1 = [
-    ['0', '2', '0', '0'],
-    ['3', '4', '5', '6'],
-    ['G', '8', '7', 'M'],
-    ['J', '9', 'K', 'L']
-  ];
-
-  const L2 = [
-    ['J', 'G', '9', '8'],
-    ['K', '3', '2', '7'],
-    ['L', '4', '5', '6'],
-    ['M', 'P', 'W', 'X']
-  ];
-
-  let MinLat = 1.50; let MaxLat = 39.00; let MinLon = 63.50; let MaxLon = 99.00;
-  let LatDivBy = 4; let LonDivBy = 4;
-
-  digipin = digipin.replace(/-/g, '');
-
-  if (digipin.length !== 10) {
+/**
+ * Converts a DIGIPIN code to latitude and longitude
+ * @param {string} digipin - DIGIPIN code
+ * @returns {Object} Object with latitude and longitude
+ */
+export function getLatLonFromDIGIPIN(digipin: string): { latitude: number; longitude: number } | 'Invalid DIGIPIN' {
+  const pin = digipin.replace(/-/g, '');
+  
+  if (pin.length !== 10) {
     return 'Invalid DIGIPIN';
   }
 
-  for (let Lvl = 1; Lvl <= 10; Lvl++) {
-    let char = digipin[Lvl - 1];
-    let row, col;
+  let minLat = BOUNDS.minLat;
+  let maxLat = BOUNDS.maxLat;
+  let minLon = BOUNDS.minLon;
+  let maxLon = BOUNDS.maxLon;
 
-    if (Lvl === 1) {
-      for (let i = 0; i < 4; i++) {
-        for (let j = 0; j < 4; j++) {
-          if (L1[i][j] === char) {
-            row = i;
-            col = j;
-            break;
-          }
+  for (let i = 0; i < 10; i++) {
+    const char = pin[i];
+    let found = false;
+    let ri = -1, ci = -1;
+
+    // Find character in grid
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 4; c++) {
+        if (DIGIPIN_GRID[r][c] === char) {
+          ri = r;
+          ci = c;
+          found = true;
+          break;
         }
-        if (row !== undefined) break;
       }
-      if (row === undefined) return 'Invalid DIGIPIN';
-    } else {
-      for (let i = 0; i < 4; i++) {
-        for (let j = 0; j < 4; j++) {
-          if (L2[i][j] === char) {
-            row = i;
-            col = j;
-            break;
-          }
-        }
-        if (row !== undefined) break;
-      }
-      if (row === undefined) return 'Invalid DIGIPIN';
+      if (found) break;
     }
 
-    let LatDivDeg = (MaxLat - MinLat) / LatDivBy;
-    let LonDivDeg = (MaxLon - MinLon) / LonDivBy;
+    if (!found) return 'Invalid DIGIPIN';
 
-    MaxLat = MaxLat - (row * LatDivDeg);
-    MinLat = MaxLat - LatDivDeg;
-    MinLon = MinLon + (col * LonDivDeg);
-    MaxLon = MinLon + LonDivDeg;
+    const latDiv = (maxLat - minLat) / 4;
+    const lonDiv = (maxLon - minLon) / 4;
+
+    const lat1 = maxLat - latDiv * (ri + 1);
+    const lat2 = maxLat - latDiv * ri;
+    const lon1 = minLon + lonDiv * ci;
+    const lon2 = minLon + lonDiv * (ci + 1);
+
+    // Update bounding box for next level
+    minLat = lat1;
+    maxLat = lat2;
+    minLon = lon1;
+    maxLon = lon2;
   }
 
-  let lat = (MinLat + MaxLat) / 2;
-  let lon = (MinLon + MaxLon) / 2;
+  const centerLat = (minLat + maxLat) / 2;
+  const centerLon = (minLon + maxLon) / 2;
 
-  return { latitude: lat, longitude: lon };
+  return {
+    latitude: parseFloat(centerLat.toFixed(6)),
+    longitude: parseFloat(centerLon.toFixed(6))
+  };
 }
 
 // Create an object containing the functions
