@@ -1,140 +1,182 @@
 /**
- * Converts coordinates to DIGIPIN codes and vice versa
+ * DIGIPIN encoder / decoder (2025 grid) – sentinel-string flavour
+ * ===============================================================
+ * • `getDIGIPINFromLatLon()` → DIGIPIN | 'Out of Bound'
+ * • `getLatLonFromDIGIPIN()` → { latitude, longitude } | 'Invalid DIGIPIN'
+ * • `getBoundsFromDIGIPIN()` → { minLat, maxLat, minLon, maxLon } | 'Invalid DIGIPIN'
  */
 
-// Single grid for all encoding/decoding
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+
+// ───────────────────────────────────────────────────────────
+//  Constants
+// ───────────────────────────────────────────────────────────
+
 const DIGIPIN_GRID = [
   ['F', 'C', '9', '8'],
   ['J', '3', '2', '7'],
   ['K', '4', '5', '6'],
-  ['L', 'M', 'P', 'T']
-];
+  ['L', 'M', 'P', 'T'],
+] as const;
 
-// Updated boundary values
-const BOUNDS = {
-  minLat: 2.5,
+type GridChar = typeof DIGIPIN_GRID[number][number];
+
+// Create a lookup map for faster character-to-position lookups
+const CHAR_POSITION_MAP = new Map<string, [number, number]>();
+for (let r = 0; r < DIGIPIN_GRID.length; r++) {
+  for (let c = 0; c < DIGIPIN_GRID[r].length; c++) {
+    CHAR_POSITION_MAP.set(DIGIPIN_GRID[r][c], [r, c]);
+  }
+}
+
+const BOUNDS = Object.freeze({
+  minLat:  2.5,
   maxLat: 38.5,
   minLon: 63.5,
-  maxLon: 99.5
-};
+  maxLon: 99.5,
+});
+
+// ───────────────────────────────────────────────────────────
+//  Public Type Definitions (emitted to .d.ts)
+// ───────────────────────────────────────────────────────────
+
+export interface DigiPinLatLon {
+  latitude:  number;
+  longitude: number;
+}
+
+export interface DigiPinBounds {
+  minLat: number;
+  maxLat: number;
+  minLon: number;
+  maxLon: number;
+}
+
+// ───────────────────────────────────────────────────────────
+//  Encode
+// ───────────────────────────────────────────────────────────
 
 /**
- * Converts latitude and longitude to a DIGIPIN code
- * @param {number} lat - Latitude
- * @param {number} lon - Longitude
- * @returns {string} DIGIPIN code
+ * Encode a latitude / longitude into a 10-character DIGIPIN.
+ * Returns `'Out of Bound'` if the input lies outside the supported area
+ * or is not a finite number.
  */
 export function getDIGIPINFromLatLon(lat: number, lon: number): string {
-  if (lat < BOUNDS.minLat || lat > BOUNDS.maxLat) {
-    return 'Out of Bound';
-  }
-  if (lon < BOUNDS.minLon || lon > BOUNDS.maxLon) {
-    return 'Out of Bound';
-  }
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return 'Out of Bound';
+  if (lat < BOUNDS.minLat || lat > BOUNDS.maxLat) return 'Out of Bound';
+  if (lon < BOUNDS.minLon || lon > BOUNDS.maxLon) return 'Out of Bound';
+  
+  // Round to maximum precision for consistency
+  lat = Number(lat.toFixed(6));
+  lon = Number(lon.toFixed(6));
 
-  let minLat = BOUNDS.minLat;
-  let maxLat = BOUNDS.maxLat;
-  let minLon = BOUNDS.minLon;
-  let maxLon = BOUNDS.maxLon;
+  let minLat: number = BOUNDS.minLat;
+  let maxLat: number = BOUNDS.maxLat;
+  let minLon: number = BOUNDS.minLon;
+  let maxLon: number = BOUNDS.maxLon;
 
-  let digiPin = '';
+  let pin = '';
 
   for (let level = 1; level <= 10; level++) {
     const latDiv = (maxLat - minLat) / 4;
     const lonDiv = (maxLon - minLon) / 4;
 
-    // Using reversed row logic as in updated algorithm
-    let row = 3 - Math.floor((lat - minLat) / latDiv);
-    let col = Math.floor((lon - minLon) / lonDiv);
+    // Row logic reversed (south→north index)
+    const row = 3 - Math.floor((lat - minLat) / latDiv);
+    const col = Math.floor((lon - minLon) / lonDiv);
 
-    // Ensure values are within bounds
-    row = Math.max(0, Math.min(row, 3));
-    col = Math.max(0, Math.min(col, 3));
+    const r = Math.min(Math.max(row, 0), 3);
+    const c = Math.min(Math.max(col, 0), 3);
 
-    digiPin += DIGIPIN_GRID[row][col];
+    pin += DIGIPIN_GRID[r][c];
+    if (level === 3 || level === 6) pin += '-';
 
-    // Add hyphens after 3rd and 6th characters
-    if (level === 3 || level === 6) {
-      digiPin += '-';
-    }
-
-    // Update bounds for next level
-    maxLat = minLat + latDiv * (4 - row);
-    minLat = minLat + latDiv * (3 - row);
-
-    minLon = minLon + lonDiv * col;
+    // Narrow bounds
+    maxLat = minLat + latDiv * (4 - r);
+    minLat = minLat + latDiv * (3 - r);
+    minLon = minLon + lonDiv * c;
     maxLon = minLon + lonDiv;
   }
 
-  return digiPin;
+  return pin;
 }
 
-/**
- * Converts a DIGIPIN code to latitude and longitude
- * @param {string} digipin - DIGIPIN code
- * @returns {Object} Object with latitude and longitude
- */
-export function getLatLonFromDIGIPIN(digipin: string): { latitude: number; longitude: number } | 'Invalid DIGIPIN' {
-  const pin = digipin.replace(/-/g, '');
-  
-  if (pin.length !== 10) {
-    return 'Invalid DIGIPIN';
-  }
+// ───────────────────────────────────────────────────────────
+//  Internal decode helper
+// ───────────────────────────────────────────────────────────
 
-  let minLat = BOUNDS.minLat;
-  let maxLat = BOUNDS.maxLat;
-  let minLon = BOUNDS.minLon;
-  let maxLon = BOUNDS.maxLon;
+function decodeInternal(pin: string):
+  | ({ centre: DigiPinLatLon } & DigiPinBounds)
+  | 'Invalid DIGIPIN' {
 
-  for (let i = 0; i < 10; i++) {
-    const char = pin[i];
-    let found = false;
-    let ri = -1, ci = -1;
+  const clean = pin.replace(/-/g, '');
+  if (clean.length !== 10) return 'Invalid DIGIPIN';
 
-    // Find character in grid
-    for (let r = 0; r < 4; r++) {
-      for (let c = 0; c < 4; c++) {
-        if (DIGIPIN_GRID[r][c] === char) {
-          ri = r;
-          ci = c;
-          found = true;
-          break;
-        }
-      }
-      if (found) break;
-    }
+  let minLat: number = BOUNDS.minLat;
+  let maxLat: number = BOUNDS.maxLat;
+  let minLon: number = BOUNDS.minLon;
+  let maxLon: number = BOUNDS.maxLon;
 
-    if (!found) return 'Invalid DIGIPIN';
+  for (const ch of clean) {
+    // O(1) lookup using the map
+    const position = CHAR_POSITION_MAP.get(ch);
+    if (!position) return 'Invalid DIGIPIN';
+    const [r, c] = position;
 
     const latDiv = (maxLat - minLat) / 4;
     const lonDiv = (maxLon - minLon) / 4;
 
-    const lat1 = maxLat - latDiv * (ri + 1);
-    const lat2 = maxLat - latDiv * ri;
-    const lon1 = minLon + lonDiv * ci;
-    const lon2 = minLon + lonDiv * (ci + 1);
+    const lat1 = maxLat - latDiv * (r + 1);
+    const lat2 = maxLat - latDiv * r;
+    const lon1 = minLon + lonDiv * c;
+    const lon2 = minLon + lonDiv * (c + 1);
 
-    // Update bounding box for next level
     minLat = lat1;
     maxLat = lat2;
     minLon = lon1;
     maxLon = lon2;
   }
 
-  const centerLat = (minLat + maxLat) / 2;
-  const centerLon = (minLon + maxLon) / 2;
-
   return {
-    latitude: parseFloat(centerLat.toFixed(6)),
-    longitude: parseFloat(centerLon.toFixed(6))
+    centre: {
+      latitude : Number(((minLat + maxLat) / 2).toFixed(6)),
+      longitude: Number(((minLon + maxLon) / 2).toFixed(6)),
+    },
+    minLat, maxLat, minLon, maxLon,
   };
 }
 
-// Create an object containing the functions
+// ───────────────────────────────────────────────────────────
+//  Public decode functions
+// ───────────────────────────────────────────────────────────
+
+/**
+ * Decode a DIGIPIN and return its centre point.
+ * Returns `'Invalid DIGIPIN'` on error.
+ */
+export function getLatLonFromDIGIPIN(pin: string): DigiPinLatLon | 'Invalid DIGIPIN' {
+  const result = decodeInternal(pin);
+  return result === 'Invalid DIGIPIN' ? result : result.centre;
+}
+
+/**
+ * Decode a DIGIPIN and return its bounding box.
+ * Returns `'Invalid DIGIPIN'` on error.
+ */
+export function getBoundsFromDIGIPIN(pin: string): DigiPinBounds | 'Invalid DIGIPIN' {
+  const result = decodeInternal(pin);
+  if (result === 'Invalid DIGIPIN') return result;
+  const { minLat, maxLat, minLon, maxLon } = result;
+  return { minLat, maxLat, minLon, maxLon };
+}
+
+// ───────────────────────────────────────────────────────────
+//  Default export bundle
+// ───────────────────────────────────────────────────────────
+
 const digipin = {
   getDIGIPINFromLatLon,
   getLatLonFromDIGIPIN,
+  getBoundsFromDIGIPIN,
 };
-
-// Export the object as the default export
 export default digipin;

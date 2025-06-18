@@ -44,6 +44,9 @@ console.log(digipinCode); // Outputs the corresponding DIGIPIN
 
 const coordinates = digipin.getLatLonFromDIGIPIN('G4J-9K4-7L');
 console.log(coordinates); // Outputs the corresponding latitude and longitude
+
+const bounds = getBoundsFromDIGIPIN('F3M-P6T-FCJK');
+console.log(bounds); // Get bounding box for a DIGIPIN, Returns { minLat, maxLat, minLon, maxLon }
 ```
 
 ## Contributing
