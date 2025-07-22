@@ -1,6 +1,6 @@
 {
   "name": "digipin",
-  "version": "0.0.3-dev",
+  "version": "0.0.1",
   "description": "An npm package for getting the digipin value from lat and long",
   "exports": {
     ".": {
