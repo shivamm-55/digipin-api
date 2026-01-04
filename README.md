@@ -1,58 +1,192 @@
-# digipin
+# 📍 digipin
 
-`digipin` is an npm package that allows you to convert between latitude/longitude coordinates and Digital Postal Index Numbers (DIGIPINs). This system is part of an initiative by the Department of Posts in India to create a standardized, geo-coded addressing system. For more details, please visit the [India Post DIGIPIN](https://www.indiapost.gov.in/vas/Pages/digipin.aspx).
+**`digipin`** is a lightweight npm package that lets you convert between **latitude/longitude coordinates** and **Digital Postal Index Numbers (DIGIPINs)**.
 
-## Features
+DIGIPIN is a geo-coded addressing system introduced by the **Department of Posts, Government of India**, aimed at creating a standardized digital address for every location.
 
-- Convert latitude and longitude to DIGIPIN
-- Convert DIGIPIN to latitude and longitude
+🔗 **Official DIGIPIN Page:**  
+👉 https://www.indiapost.gov.in/vas/Pages/digipin.aspx
 
-## Installation
+---
 
-To install the package, use npm or yarn:
+## ✨ Features
 
-```bash
+- 🌍 Convert **Latitude & Longitude → DIGIPIN**
+- 🔁 Convert **DIGIPIN → Latitude & Longitude**
+- 📦 Optional **REST API** (Node.js + Express + TypeScript)
+- 🧠 Fully **TypeScript-supported**
+- ⚡ Lightweight, fast, and dependency-friendly
+
+---
+
+## 📦 Installation
+
+~~~bash
 npm install digipin
-```
+~~~
 
-## Usage
+---
 
-### Importing the Functions
+## 🚀 Usage (Library)
 
-You can import the functions either as named imports or as a default import.
+### 📌 Named Imports
 
-#### Named Imports
-
-```typescript
-import { getDIGIPINFromLatLon, getLatLonFromDIGIPIN } from 'digipin';
+~~~ts
+import { getDIGIPINFromLatLon, getLatLonFromDIGIPIN, getBoundsFromDIGIPIN } from 'digipin';
 
 const digipin = getDIGIPINFromLatLon(12.34, 56.78);
-console.log(digipin); // Outputs the corresponding DIGIPIN
+console.log(digipin);
 
 const coordinates = getLatLonFromDIGIPIN('G4J-9K4-7L');
-console.log(coordinates); // Outputs the corresponding latitude and longitude
-```
+console.log(coordinates);
 
+const bounds = getBoundsFromDIGIPIN('F3M-P6T-FCJK');
+console.log(bounds);
+// { minLat, maxLat, minLon, maxLon }
+~~~
 
-#### Default Import
+---
 
-```typescript
+### 📌 Default Import
+
+~~~ts
 import digipin from 'digipin';
 
 const digipinCode = digipin.getDIGIPINFromLatLon(12.34, 56.78);
-console.log(digipinCode); // Outputs the corresponding DIGIPIN
+console.log(digipinCode);
 
 const coordinates = digipin.getLatLonFromDIGIPIN('G4J-9K4-7L');
-console.log(coordinates); // Outputs the corresponding latitude and longitude
+console.log(coordinates);
+~~~
 
-const bounds = getBoundsFromDIGIPIN('F3M-P6T-FCJK');
-console.log(bounds); // Get bounding box for a DIGIPIN, Returns { minLat, maxLat, minLon, maxLon }
-```
+---
 
-## Contributing
+## 🔌 REST API Support (Optional)
 
-Contributions are welcome! Please fork the repository and submit a pull request with your changes. For major changes, please open an issue to discuss what you would like to change.
+This package also includes an **optional REST API** built with:
 
-## License
+- Node.js
+- Express
+- TypeScript
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+> ⚠️ The REST API is **additive** and does **not affect** library usage.
+
+---
+
+### ▶️ Run API Locally
+
+~~~bash
+npm install
+npm run dev
+~~~
+
+📡 Server runs at:
+
+~~~text
+http://localhost:3000
+~~~
+
+---
+
+### ❤️ Health Check
+
+~~~bash
+curl http://localhost:3000/api/digipin/health
+~~~
+
+**Response:**
+
+~~~text
+DIGIPIN API is running 🚀
+~~~
+
+---
+
+## 🔗 API Endpoints
+
+### 1️⃣ Encode: Latitude/Longitude → DIGIPIN
+
+**POST** `/api/digipin/encode`
+
+#### Request Body
+
+~~~json
+{
+  "latitude": 28.6139,
+  "longitude": 77.2090
+}
+~~~
+
+#### cURL
+
+~~~bash
+curl -X POST http://localhost:3000/api/digipin/encode \
+  -H "Content-Type: application/json" \
+  -d '{"latitude":28.6139,"longitude":77.2090}'
+~~~
+
+#### Response
+
+~~~json
+{
+  "digipin": "DP-2861-7720"
+}
+~~~
+
+---
+
+### 2️⃣ Decode: DIGIPIN → Latitude/Longitude
+
+**POST** `/api/digipin/decode`
+
+#### Request Body
+
+~~~json
+{
+  "digipin": "DP-2861-7720"
+}
+~~~
+
+#### cURL
+
+~~~bash
+curl -X POST http://localhost:3000/api/digipin/decode \
+  -H "Content-Type: application/json" \
+  -d '{"digipin":"DP-2861-7720"}'
+~~~
+
+#### Response
+
+~~~json
+{
+  "latitude": 28.61,
+  "longitude": 77.2
+}
+~~~
+
+---
+
+### ❌ Error Response
+
+**Invalid DIGIPIN**
+
+~~~json
+{
+  "message": "Invalid DIGIPIN provided"
+}
+~~~
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! 🚀
+
+1. Fork the repository  
+2. Create a feature branch  
+3. Commit your changes  
+4. Open a Pull Request
+
+## 📄 License
+
+MIT © Shivam Mishra

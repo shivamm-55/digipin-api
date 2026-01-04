@@ -139,8 +139,8 @@ function decodeInternal(pin: string):
 
   return {
     centre: {
-      latitude : Number(((minLat + maxLat) / 2).toFixed(6)),
-      longitude: Number(((minLon + maxLon) / 2).toFixed(6)),
+      latitude : Number(((minLat + maxLat) / 2).toFixed(8)),
+      longitude: Number(((minLon + maxLon) / 2).toFixed(8)),
     },
     minLat, maxLat, minLon, maxLon,
   };

@@ -20,6 +20,8 @@
     "lib/**/*"
   ],
   "scripts": {
+    "dev": "nodemon src/server.ts",
+    "start": "ts-node src/server.ts",
     "clean": "del-cli ./lib",
     "build": "npm run clean && npm run build:esm && npm run build:cjs",
     "build:esm": "tsc -p ./configs/tsconfig.esm.json && move-file lib/esm/index.js lib/esm/index.mjs",
@@ -61,13 +63,22 @@
   "homepage": "https://github.com/ronitjadhav/digipin#readme",
   "devDependencies": {
     "@types/chai": "^4.3.20",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/mocha": "^9.1.1",
+    "@types/node": "^25.0.3",
     "chai": "^4.5.0",
     "del-cli": "^5.0.0",
     "mocha": "^10.8.2",
     "move-file-cli": "^3.0.0",
+    "nodemon": "^3.1.11",
     "semantic-release": "^19.0.3",
     "ts-node": "^10.9.2",
     "typescript": "^4.7.4"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "digipin": "^0.0.1",
+    "express": "^5.2.1"
   }
 }
